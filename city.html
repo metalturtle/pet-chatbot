@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Night City Horizon</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from "https://unpkg.com/three@0.150.1/build/three.module.js";
+
+      // Create scene
+      const scene = new THREE.Scene();
+      // Set a deep purple-ish background to match a night sky
+      scene.background = new THREE.Color(0x1f004f);
+
+      // Create camera
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      camera.position.set(0, 15, 40);
+
+      // Create renderer
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      // Add lights: ambient + directional
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+      scene.add(ambientLight);
+
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      dirLight.position.set(0, 20, 10);
+      scene.add(dirLight);
+
+      // Create a large sphere to represent the moon
+      const moonGeo = new THREE.SphereGeometry(3, 32, 32);
+      const moonMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const moon = new THREE.Mesh(moonGeo, moonMat);
+      // Position the moon behind the buildings
+      moon.position.set(-15, 25, -50);
+      scene.add(moon);
+
+      // Optionally, add some simple “stars” in the sky
+      function addStars(count) {
+        for (let i = 0; i < count; i++) {
+          const starGeo = new THREE.SphereGeometry(0.05, 8, 8);
+          const starMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+          const star = new THREE.Mesh(starGeo, starMat);
+
+          // Randomly position them around/above
+          star.position.set(
+            (Math.random() - 0.5) * 200, // x
+            Math.random() * 40 + 5, // y
+            (Math.random() - 0.5) * 200 // z
+          );
+          scene.add(star);
+        }
+      }
+      addStars(200);
+
+      // Function to create a single building
+      function createBuilding(width, height, depth, x, z) {
+        // Building shape
+        const buildingGeo = new THREE.BoxGeometry(width, height, depth);
+        const buildingMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
+        const building = new THREE.Mesh(buildingGeo, buildingMat);
+
+        // Position so it sits on 'ground' (y=0)
+        building.position.set(x, height / 2, z);
+
+        // Create a group to hold "lit" windows on the front face
+        const windowsGroup = new THREE.Group();
+        const windowRows = Math.floor(height * 1.5); // More rows if you want more windows
+        const windowCols = Math.floor(width * 1.5);
+
+        for (let r = 0; r < windowRows; r++) {
+          for (let c = 0; c < windowCols; c++) {
+            // Randomly decide if a window is lit
+            if (Math.random() > 0.7) {
+              const windowGeo = new THREE.PlaneGeometry(0.5, 0.5);
+              const windowMat = new THREE.MeshBasicMaterial({
+                color: 0xffff66,
+                side: THREE.DoubleSide,
+              });
+              const windowMesh = new THREE.Mesh(windowGeo, windowMat);
+
+              // Position each window on the front face
+              windowMesh.position.x = c - windowCols / 2 + 0.5;
+              windowMesh.position.y = r - windowRows / 2 + 0.5;
+              windowMesh.position.z = depth / 2 + 0.01; // a little offset to avoid z-fighting
+              windowsGroup.add(windowMesh);
+            }
+          }
+        }
+        building.add(windowsGroup);
+
+        return building;
+      }
+
+      // Create multiple buildings for the horizon
+      for (let i = 0; i < 20; i++) {
+        const w = 2 + Math.random() * 3;
+        const h = 5 + Math.random() * 20;
+        const d = 2 + Math.random() * 3;
+        // Spread them out randomly in X and Z
+        const x = (Math.random() - 0.5) * 60; // some range in x
+        const z = Math.random() * -30 - 5; // negative z, so they recede
+        const building = createBuilding(w, h, d, x, z);
+        scene.add(building);
+      }
+
+      // Render loop
+      function animate() {
+        requestAnimationFrame(animate);
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      // Handle resize
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    </script>
+  </body>
+</html>

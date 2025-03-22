@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Chatbot</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: #121212;
+        color: #fff;
+        font-family: "Arial", sans-serif;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      #app-container {
+        position: relative;
+        width: 100%;
+        height: 100vh;
+      }
+
+      #main-section {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #model-container {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #input-section {
+        padding: 20px;
+        background: rgba(26, 26, 26, 0.85);
+        backdrop-filter: blur(35px);
+        -webkit-backdrop-filter: blur(35px);
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        display: flex;
+        gap: 10px;
+        box-shadow: 0 -5px 30px rgba(0, 0, 0, 0.25);
+        position: relative;
+        z-index: 10;
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
+      }
+
+      #message-input {
+        flex: 1;
+        padding: 15px;
+        border: 2px solid #757575; /* Neutral gray border */
+        border-radius: 10px; /* Rounded edges */
+        background: rgba(30, 30, 30, 0.9);
+        color: #fff;
+        font-size: 16px;
+        box-shadow: 0 2px 25px rgba(117, 117, 117, 0.15); /* Gray glow */
+      }
+
+      .action-button {
+        background-color: #212121;
+        color: white;
+        border: 1px solid #9c27b0;
+        padding: 8px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        margin-right: 5px;
+      }
+
+      .action-button:hover {
+        background-color: #424242;
+      }
+
+      .action-button.active {
+        background-color: #424242;
+        border-color: #ce93d8;
+        box-shadow: 0 0 5px rgba(156, 39, 176, 0.5);
+      }
+
+      .action-button.has-selection {
+        background-color: #7b1fa2;
+        color: white;
+        border-color: #ce93d8;
+      }
+
+      #work-button {
+        border-color: #9c27b0; /* Purple border */
+        background: #212121; /* Dark gray background */
+        box-shadow: 0 2px 20px rgba(156, 39, 176, 0.2); /* Purple glow */
+      }
+
+      #work-button:hover {
+        background: #333333; /* Slightly lighter on hover */
+        border-color: #ce93d8; /* Lighter purple on hover */
+        box-shadow: 0 2px 25px rgba(156, 39, 176, 0.3); /* Enhanced purple glow */
+      }
+
+      #clear-workflow-button {
+        border-color: #f44336; /* Red border */
+        background: #212121; /* Dark gray background */
+        box-shadow: 0 2px 20px rgba(244, 67, 54, 0.2); /* Red glow */
+        display: none; /* Hidden by default, will be shown when a workflow is selected */
+      }
+
+      #clear-workflow-button:hover {
+        background: #333333; /* Slightly lighter on hover */
+        border-color: #ef9a9a; /* Lighter red on hover */
+        box-shadow: 0 2px 25px rgba(244, 67, 54, 0.3); /* Enhanced red glow */
+      }
+
+      #chat-section {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 400px;
+        max-height: calc(100vh - 120px);
+        background: rgba(18, 18, 18, 0.95); /* Nearly solid background */
+        border-radius: 15px; /* Rounded edges */
+        overflow-y: auto;
+        padding: 20px;
+        box-shadow: 0 4px 35px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        z-index: 10;
+      }
+
+      /* Workflow panel on the left side */
+      #workflow-panel {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        width: 350px;
+        max-height: calc(100vh - 120px);
+        background: rgba(18, 18, 18, 0.95);
+        border-radius: 15px;
+        overflow-y: auto;
+        padding: 20px;
+        box-shadow: 0 4px 35px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        z-index: 10;
+        display: none; /* Initially hidden, will be shown when workflow data is loaded */
+      }
+
+      .workflow-card {
+        background: rgba(30, 30, 30, 0.8);
+        border: 2px solid #9c27b0;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 15px;
+        color: white;
+        box-shadow: 0 4px 10px rgba(156, 39, 176, 0.2);
+        transition: all 0.3s ease;
+        cursor: pointer;
+      }
+
+      .workflow-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 15px rgba(156, 39, 176, 0.3);
+      }
+
+      .workflow-card.selected {
+        background: rgba(40, 40, 40, 0.9);
+        border-color: #ce93d8;
+        box-shadow: 0 0 20px rgba(156, 39, 176, 0.4);
+      }
+
+      .workflow-details {
+        font-size: 12px;
+        color: #bb86fc;
+        margin-bottom: 10px;
+        font-style: italic;
+      }
+
+      .workflow-prompt-label {
+        font-size: 13px;
+        font-weight: bold;
+        margin-bottom: 5px;
+        color: #bb86fc;
+      }
+
+      .workflow-use-button {
+        background: rgba(156, 39, 176, 0.3);
+        border: 1px solid #9c27b0;
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        margin-top: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 14px;
+        width: 100%;
+        text-align: center;
+      }
+
+      .workflow-use-button:hover {
+        background: rgba(156, 39, 176, 0.6);
+        box-shadow: 0 0 10px rgba(156, 39, 176, 0.4);
+      }
+
+      .workflow-title {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .workflow-icon {
+        width: 30px;
+        height: 30px;
+        background-color: #9c27b0;
+        border-radius: 50%;
+        margin-right: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+      }
+
+      .workflow-id {
+        font-size: 12px;
+        color: #9e9e9e;
+        margin-left: auto;
+      }
+
+      .workflow-name {
+        font-weight: bold;
+        font-size: 18px;
+      }
+
+      .workflow-prompt {
+        font-size: 14px;
+        color: #e0e0e0;
+        margin-top: 10px;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+        border-left: 3px solid #9c27b0;
+      }
+
+      #workflow-panel-title {
+        color: #9c27b0;
+        margin-bottom: 15px;
+        font-size: 20px;
+        text-align: center;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(156, 39, 176, 0.3);
+      }
+
+      #reset-workflow-button {
+        background: rgba(30, 30, 30, 0.8);
+        border: 1px solid #9c27b0;
+        color: white;
+        padding: 8px 15px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 14px;
+        display: block;
+        width: 100%;
+        text-align: center;
+      }
+
+      #reset-workflow-button:hover {
+        background: rgba(156, 39, 176, 0.2);
+        box-shadow: 0 0 10px rgba(156, 39, 176, 0.3);
+      }
+
+      /* Execute workflow button */
+      #execute-workflow-button,
+      .execute-workflow-button {
+        background: #9c27b0; /* Purple background */
+        border: 2px solid #ce93d8;
+        color: white;
+        padding: 12px 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        cursor: pointer !important; /* Force cursor */
+        transition: all 0.2s ease;
+        font-size: 16px;
+        font-weight: bold;
+        /* Make button visible and interactive */
+        display: block !important; /* Force display to see if it appears */
+        width: 100%;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(156, 39, 176, 0.4);
+        position: relative; /* Ensure it's in the stacking context */
+        z-index: 30; /* Higher z-index to ensure it's clickable */
+        pointer-events: auto !important; /* Force pointer events */
+        opacity: 1 !important; /* Force opacity */
+        outline: 2px solid rgba(255, 255, 255, 0.5); /* Add outline to make it more visible */
+      }
+
+      #execute-workflow-button:hover,
+      .execute-workflow-button:hover {
+        background: #7b1fa2; /* Darker purple on hover */
+        box-shadow: 0 6px 20px rgba(156, 39, 176, 0.5);
+        transform: translateY(-2px);
+      }
+
+      #execute-workflow-button:active,
+      .execute-workflow-button:active {
+        transform: translateY(1px);
+        box-shadow: 0 2px 10px rgba(156, 39, 176, 0.3);
+      }
+
+      /* Add a focus state to highlight the button when tabbed to */
+      #execute-workflow-button:focus,
+      .execute-workflow-button:focus {
+        outline: 3px solid rgba(156, 39, 176, 0.8);
+        box-shadow: 0 0 0 4px rgba(156, 39, 176, 0.4);
+      }
+
+      #messages {
+        position: relative;
+        z-index: 20;
+      }
+
+      .message {
+        margin-bottom: 15px;
+        padding: 10px 15px;
+        border-radius: 12px; /* Rounded edges */
+        max-width: 90%;
+        word-wrap: break-word;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        position: relative;
+        font-weight: 500;
+        letter-spacing: 0.2px;
+      }
+
+      .user-message {
+        background: #000000; /* Black background */
+        border: 2px solid #4caf50; /* Green border */
+        margin-left: auto;
+        color: white;
+        box-shadow: 0 4px 10px rgba(76, 175, 80, 0.2); /* Green shadow */
+        border-top-right-radius: 2px; /* Special shape for user messages */
+      }
+
+      .bot-message {
+        background: #000000; /* Black background */
+        border: 2px solid #9c27b0; /* Purple border */
+        color: white;
+        box-shadow: 0 4px 10px rgba(156, 39, 176, 0.2); /* Purple shadow */
+        border-top-left-radius: 2px; /* Special shape for bot messages */
+      }
+
+      #message-input:focus,
+      .action-button:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(117, 117, 117, 0.5); /* Gray focus */
+        border-color: #9e9e9e; /* Gray border */
+      }
+
+      canvas {
+        max-width: 100%;
+        max-height: 100vh;
+      }
+
+      #chat-section::-webkit-scrollbar,
+      #workflow-panel::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      #chat-section::-webkit-scrollbar-track,
+      #workflow-panel::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 10px; /* Rounded edges */
+      }
+
+      #chat-section::-webkit-scrollbar-thumb,
+      #workflow-panel::-webkit-scrollbar-thumb {
+        background: rgba(156, 39, 176, 0.3); /* Purple scrollbar */
+        border-radius: 10px; /* Rounded edges */
+        border: 1px solid rgba(156, 39, 176, 0.2);
+      }
+
+      #chat-section::-webkit-scrollbar-thumb:hover,
+      #workflow-panel::-webkit-scrollbar-thumb:hover {
+        background: rgba(156, 39, 176, 0.5); /* Brighter purple on hover */
+      }
+
+      /* Light reflection effect with gray tint for input section */
+      #input-section::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -50%;
+        width: 200%;
+        height: 100%;
+        background: linear-gradient(
+          to right,
+          rgba(255, 255, 255, 0) 0%,
+          rgba(117, 117, 117, 0.05) 50%,
+          /* Gray tint */ rgba(255, 255, 255, 0) 100%
+        );
+        transform: rotate(30deg);
+        pointer-events: none;
+        z-index: 2;
+        border-radius: inherit; /* Match parent border radius */
+      }
+
+      /* Light reflection effect with purple tint for chat section */
+      #chat-section::after,
+      #workflow-panel::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -50%;
+        width: 200%;
+        height: 100%;
+        background: linear-gradient(
+          to right,
+          rgba(255, 255, 255, 0) 0%,
+          rgba(156, 39, 176, 0.05) 50%,
+          /* Purple tint */ rgba(255, 255, 255, 0) 100%
+        );
+        transform: rotate(30deg);
+        pointer-events: none;
+        z-index: 2;
+        border-radius: inherit; /* Match parent border radius */
+      }
+
+      /* Add a placeholder message to show where messages will appear */
+      #messages:empty::before {
+        content: "Messages will appear here";
+        display: block;
+        color: rgba(255, 255, 255, 0.5);
+        font-style: italic;
+        text-align: center;
+        padding: 20px 0;
+      }
+
+      /* Chatbot talking animation */
+      @keyframes talking {
+        0% {
+          transform: translateY(0);
+        }
+        25% {
+          transform: translateY(-5px);
+        }
+        50% {
+          transform: translateY(0);
+        }
+        75% {
+          transform: translateY(5px);
+        }
+        100% {
+          transform: translateY(0);
+        }
+      }
+
+      .talking {
+        animation: talking 1.2s ease-in-out infinite;
+      }
+
+      /* Speech bubble for the model */
+      .speech-bubble {
+        position: absolute;
+        background: #000000;
+        border: 2px solid #9c27b0; /* Purple border to match bot messages */
+        color: white;
+        padding: 15px;
+        border-radius: 12px;
+        max-width: 250px;
+        text-align: center;
+        font-weight: 500;
+        box-shadow: 0 4px 10px rgba(156, 39, 176, 0.3);
+        top: 25%;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 15;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+        pointer-events: none;
+      }
+
+      /* Speech bubble tail/pointer */
+      .speech-bubble:after {
+        content: "";
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 10px solid transparent;
+        border-right: 10px solid transparent;
+        border-top: 10px solid #9c27b0; /* Match border color */
+      }
+
+      /* Show speech bubble when model is talking */
+      .speech-bubble.visible {
+        opacity: 1;
+      }
+
+      /* Active Workflow Card */
+      .active-workflow-card {
+        position: absolute;
+        bottom: 20%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 350px;
+        background: rgba(18, 18, 18, 0.95);
+        border: 2px solid #9c27b0;
+        border-radius: 15px;
+        padding: 15px;
+        color: white;
+        box-shadow: 0 4px 35px rgba(0, 0, 0, 0.5);
+        z-index: 20;
+        animation: slideIn 0.5s ease-out forwards;
+        transition: all 0.3s ease;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateX(-50%) translateY(50px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+      }
+
+      .active-workflow-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .active-workflow-icon {
+        width: 40px;
+        height: 40px;
+        background-color: #9c27b0;
+        border-radius: 50%;
+        margin-right: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: bold;
+      }
+
+      .active-workflow-name {
+        font-size: 18px;
+        font-weight: bold;
+      }
+
+      .active-workflow-status {
+        font-size: 14px;
+        color: #e0e0e0;
+        margin-bottom: 15px;
+      }
+
+      .active-workflow-progress {
+        width: 100%;
+        margin-top: 10px;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+
+      .progress-bar-fill {
+        height: 100%;
+        background: #9c27b0;
+        width: 0;
+        transition: width 0.5s ease;
+      }
+
+      /* Typing indicator for bot responses */
+      .typing-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 60px;
+        padding: 10px;
+      }
+
+      .typing-indicator span {
+        height: 10px;
+        width: 10px;
+        margin: 0 1px;
+        background-color: #9c27b0;
+        border-radius: 50%;
+        display: inline-block;
+        opacity: 0.4;
+      }
+
+      .typing-indicator span:nth-child(1) {
+        animation: pulse 1s infinite 0s;
+      }
+
+      .typing-indicator span:nth-child(2) {
+        animation: pulse 1s infinite 0.2s;
+      }
+
+      .typing-indicator span:nth-child(3) {
+        animation: pulse 1s infinite 0.4s;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 0.4;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.2);
+        }
+        100% {
+          opacity: 0.4;
+          transform: scale(1);
+        }
+      }
+
+      /* Execute workflow button highlight effect */
+      @keyframes buttonPulse {
+        0% {
+          box-shadow: 0 4px 15px rgba(156, 39, 176, 0.4);
+        }
+        50% {
+          box-shadow: 0 0 30px rgba(156, 39, 176, 0.8);
+        }
+        100% {
+          box-shadow: 0 4px 15px rgba(156, 39, 176, 0.4);
+        }
+      }
+
+      .highlight-button {
+        animation: buttonPulse 1s ease-in-out 2;
+        border: 2px solid white !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app-container">
+      <div id="main-section">
+        <div id="model-container">
+          <div class="speech-bubble" id="speech-bubble">I'm thinking...</div>
+        </div>
+        <div id="input-section">
+          <input
+            type="text"
+            id="message-input"
+            placeholder="Type your message..."
+          />
+          <button id="send-button" class="action-button">Send</button>
+          <button id="work-button" class="action-button">Work</button>
+        </div>
+      </div>
+      <div id="chat-section">
+        <div id="messages"></div>
+      </div>
+      <!-- Workflow panel for the left side -->
+      <div id="workflow-panel">
+        <h2 id="workflow-panel-title">Workflow Subnets</h2>
+        <button id="execute-workflow-button" class="execute-workflow-button">
+          Execute Selected Workflow
+        </button>
+        <button id="reset-workflow-button">Reset Selection</button>
+        <div id="workflow-cards">
+          <!-- Workflow cards will be added here dynamically -->
+        </div>
+      </div>
+    </div>
+    <!-- Add this extra script to ensure button updates work -->
+    <script>
+      // Direct button updater that works with the ChatManager
+      function checkAndFixWorkflowButton() {
+        const chatManager = window.chatManagerInstance;
+        if (!chatManager) return;
+
+        const workButton = document.getElementById("work-button");
+        if (!workButton) return;
+
+        if (chatManager.selectedWorkflow) {
+          // Force button to Execute mode
+          workButton.textContent = "Execute";
+          workButton.style.background = "#9c27b0";
+          workButton.style.color = "white";
+          workButton.style.borderColor = "#ce93d8";
+
+          // Show clear button
+          const clearButton = document.getElementById("clear-workflow-button");
+          if (clearButton) clearButton.style.display = "block";
+        } else {
+          // Force button to Work mode
+          workButton.textContent = "Work";
+          workButton.style.background = "#212121";
+          workButton.style.color = "white";
+          workButton.style.borderColor = "#9c27b0";
+
+          // Hide clear button
+          const clearButton = document.getElementById("clear-workflow-button");
+          if (clearButton) clearButton.style.display = "none";
+        }
+      }
+
+      // Helper function to verify and fix workflow selection state
+      function verifyWorkflowSelection() {
+        const chatManager = window.chatManagerInstance;
+        if (!chatManager) return;
+
+        // Get all potential sources of workflow selection
+        const chatManagerWorkflow = chatManager.selectedWorkflow;
+        const panelWorkflow = chatManager.workflowPanelManager
+          ? chatManager.workflowPanelManager.selectedWorkflow
+          : null;
+        const windowWorkflow = window.selectedWorkflow;
+
+        // Check if we have a selected workflow in any of these places
+        const selectedWorkflow =
+          chatManagerWorkflow || panelWorkflow || windowWorkflow;
+
+        if (selectedWorkflow) {
+          console.log(
+            "VERIFICATION: Found workflow selection, ensuring consistency"
+          );
+
+          // Update all references to ensure consistency
+          chatManager.selectedWorkflow = selectedWorkflow;
+          if (chatManager.workflowPanelManager) {
+            chatManager.workflowPanelManager.selectedWorkflow =
+              selectedWorkflow;
+          }
+          window.selectedWorkflow = selectedWorkflow;
+
+          // Also ensure execute button is visible
+          const executeButton = document.getElementById(
+            "execute-workflow-button"
+          );
+          if (executeButton) {
+            executeButton.style.display = "block";
+            executeButton.workflow = selectedWorkflow;
+            executeButton.setAttribute(
+              "data-workflow",
+              selectedWorkflow.subnetName
+            );
+          }
+
+          return true;
+        }
+
+        return false;
+      }
+
+      // Diagnostic function to force add click handlers to buttons
+      function diagnoseButtons() {
+        // Check and fix Work button
+        console.log("DIAGNOSTIC: Checking Work button");
+        const workButton = document.getElementById("work-button");
+        if (!workButton) {
+          console.error("DIAGNOSTIC: Work button not found!");
+        } else {
+          console.log("DIAGNOSTIC: Work button found:", workButton);
+
+          // Add a direct click handler that bypasses the normal system
+          workButton.addEventListener("click", function (event) {
+            console.log("DIAGNOSTIC: Work button clicked directly!");
+
+            const chatManager = window.chatManagerInstance;
+            if (!chatManager) {
+              console.error("DIAGNOSTIC: ChatManager not found on window!");
+              return;
+            }
+
+            console.log(
+              "DIAGNOSTIC: ChatManager found, calling handleWorkRequest"
+            );
+            chatManager.handleWorkRequest();
+          });
+
+          console.log("DIAGNOSTIC: Added emergency handler to Work button");
+        }
+
+        // Check and fix Execute Workflow button
+        console.log("DIAGNOSTIC: Checking Execute Workflow button");
+        const executeButton = document.getElementById(
+          "execute-workflow-button"
+        );
+        if (!executeButton) {
+          console.error("DIAGNOSTIC: Execute Workflow button not found!");
+        } else {
+          console.log(
+            "DIAGNOSTIC: Execute Workflow button found:",
+            executeButton
+          );
+
+          // Add a direct click handler that bypasses the normal system
+          executeButton.addEventListener("click", function (event) {
+            console.log(
+              "DIAGNOSTIC: Execute Workflow button clicked directly!"
+            );
+
+            // Show initial selection state
+            const chatManager = window.chatManagerInstance;
+            if (!chatManager) {
+              console.error("DIAGNOSTIC: ChatManager not found on window!");
+              return;
+            }
+
+            // Check multiple places for selected workflow
+            console.log(
+              "DIAGNOSTIC: Checking for selected workflow in multiple places"
+            );
+            const workflowFromChatManager = chatManager.selectedWorkflow;
+            const workflowFromPanel = chatManager.workflowPanelManager
+              ? chatManager.workflowPanelManager.selectedWorkflow
+              : null;
+            const workflowFromWindow = window.selectedWorkflow;
+            const workflowFromButton = executeButton.workflow;
+
+            console.log("DIAGNOSTIC: Selection sources:", {
+              chatManager: workflowFromChatManager,
+              workflowPanel: workflowFromPanel,
+              window: workflowFromWindow,
+              button: workflowFromButton,
+            });
+
+            // Try to fix if we can find a workflow in any of these places
+            const workflowToUse =
+              workflowFromChatManager ||
+              workflowFromPanel ||
+              workflowFromWindow ||
+              workflowFromButton;
+
+            // Update all references if we found a workflow
+            if (workflowToUse) {
+              console.log(
+                "DIAGNOSTIC: Found workflow to use:",
+                workflowToUse.subnetName
+              );
+
+              // Update all references
+              chatManager.selectedWorkflow = workflowToUse;
+              if (chatManager.workflowPanelManager) {
+                chatManager.workflowPanelManager.selectedWorkflow =
+                  workflowToUse;
+              }
+              window.selectedWorkflow = workflowToUse;
+              executeButton.workflow = workflowToUse;
+
+              // Check if we have a message
+              const message = chatManager.messageInput.value.trim();
+              console.log("DIAGNOSTIC: Message to send:", message);
+
+              if (message) {
+                console.log("DIAGNOSTIC: Calling handleMessage");
+
+                // Run with a small delay to ensure state is updated
+                setTimeout(() => {
+                  chatManager.handleMessage();
+                }, 100);
+              } else {
+                console.log("DIAGNOSTIC: No message to send, showing alert");
+                chatManager.messageHandler.addMessage(
+                  "Please enter a message to send to the workflow.",
+                  false
+                );
+                chatManager.updateSpeechBubble("I need a message to process!");
+                chatManager.animationManager.startTalking();
+                setTimeout(() => {
+                  chatManager.animationManager.stopTalking();
+                }, 2000);
+              }
+            } else {
+              console.error(
+                "DIAGNOSTIC: No workflow selected when Execute button was clicked"
+              );
+              chatManager.messageHandler.addMessage(
+                "Error: No workflow selected. Please select a workflow first.",
+                false
+              );
+            }
+          });
+
+          console.log(
+            "DIAGNOSTIC: Added emergency handler to Execute Workflow button"
+          );
+
+          // Make sure the button is visible and styled properly
+          executeButton.style.display = "block";
+          executeButton.style.pointerEvents = "auto";
+          executeButton.style.cursor = "pointer";
+          executeButton.style.opacity = "1";
+          executeButton.style.zIndex = "100";
+        }
+      }
+
+      // Run every second for the regular fix
+      setInterval(checkAndFixWorkflowButton, 1000);
+
+      // Also run workflow selection verification every 2 seconds
+      setInterval(verifyWorkflowSelection, 2000);
+
+      // Run the diagnostics after a short delay to ensure everything is loaded
+      setTimeout(diagnoseButtons, 2000);
+
+      // Add a simple visual indicator that updates when a workflow is selected
+      function createSelectionIndicator() {
+        // Create a small indicator element
+        const indicator = document.createElement("div");
+        indicator.id = "workflow-selection-indicator";
+        indicator.style.position = "fixed";
+        indicator.style.bottom = "10px";
+        indicator.style.left = "10px";
+        indicator.style.backgroundColor = "rgba(0,0,0,0.7)";
+        indicator.style.color = "white";
+        indicator.style.padding = "5px 10px";
+        indicator.style.borderRadius = "4px";
+        indicator.style.fontSize = "12px";
+        indicator.style.zIndex = "9999";
+        indicator.style.pointerEvents = "none";
+        indicator.textContent = "No workflow selected";
+
+        // Add to document
+        document.body.appendChild(indicator);
+
+        // Update the indicator every second
+        setInterval(() => {
+          const chatManager = window.chatManagerInstance;
+          if (!chatManager) return;
+
+          const selectedWorkflow =
+            chatManager.selectedWorkflow ||
+            (chatManager.workflowPanelManager
+              ? chatManager.workflowPanelManager.selectedWorkflow
+              : null) ||
+            window.selectedWorkflow;
+
+          if (selectedWorkflow) {
+            indicator.textContent = `Selected: ${selectedWorkflow.subnetName}`;
+            indicator.style.backgroundColor = "rgba(156, 39, 176, 0.7)";
+          } else {
+            indicator.textContent = "No workflow selected";
+            indicator.style.backgroundColor = "rgba(0,0,0,0.7)";
+          }
+        }, 1000);
+      }
+
+      // Create the indicator after a short delay
+      setTimeout(createSelectionIndicator, 2000);
+    </script>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
