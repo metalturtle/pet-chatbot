@@ -18,6 +18,10 @@ export class AnimationManager {
     this.electricEffectIntensity = 0;
     this.electricEffectContainer = null;
     this.setupElectricEffect();
+
+    // Workflow mode flag and settings
+    this.workflowMode = false;
+    this.vibrationIntensity = 0.1; // Intensity of head vibration in workflow mode
   }
 
   setupElectricEffect() {
@@ -120,8 +124,12 @@ export class AnimationManager {
       });
     }
 
+    // Check for workflow mode - takes priority over talking and idle animations
+    if (this.workflowMode) {
+      this.updateWorkflowAnimation();
+    }
     // Update talking animation if active, otherwise update idle animation
-    if (this.isTalking) {
+    else if (this.isTalking) {
       this.updateTalkingAnimation();
     } else {
       // Check idle animation
@@ -130,6 +138,11 @@ export class AnimationManager {
   }
 
   handleMouseMove(event) {
+    // Ignore mouse movement if in workflow mode
+    if (this.workflowMode) {
+      return;
+    }
+
     // Record user interaction
     this.isUserInteracting = true;
     this.lastInteractionTime = this.clock.getElapsedTime();
@@ -260,5 +273,43 @@ export class AnimationManager {
   registerUserInteraction() {
     this.isUserInteracting = true;
     this.lastInteractionTime = this.clock.getElapsedTime();
+  }
+
+  // New method: Apply vibrating animation for workflow mode
+  updateWorkflowAnimation() {
+    if (!this.modelManager.model) return;
+
+    const currentTime = this.clock.getElapsedTime();
+
+    // Reset any vertical movement
+    this.modelManager.setPosition(0, 0, 0);
+
+    // Create rapid, random vibrations in all directions
+    const vibrationX = (Math.random() * 2 - 1) * this.vibrationIntensity;
+    const vibrationY = (Math.random() * 2 - 1) * this.vibrationIntensity;
+
+    // Apply the vibration to head rotation
+    // Using direct rotation values rather than mouse tracking
+    this.modelManager.setTargetRotation(vibrationX, vibrationY);
+
+    // Add slight scale vibration for more intensity
+    const scaleVibration = 1.0 + (Math.random() * 0.02 - 0.01);
+    this.modelManager.setScale(scaleVibration);
+  }
+
+  // Enable workflow mode with vibration
+  startWorkflowMode() {
+    this.workflowMode = true;
+    console.log(
+      "AnimationManager: Workflow mode enabled - head vibration activated"
+    );
+  }
+
+  // Disable workflow mode, return to normal behavior
+  stopWorkflowMode() {
+    this.workflowMode = false;
+    console.log(
+      "AnimationManager: Workflow mode disabled - normal head movement resumed"
+    );
   }
 }

@@ -17,7 +17,7 @@ export default {
 
   // Configure optimizations
   optimizeDeps: {
-    include: ["three", "postprocessing"],
+    include: ["three"],
   },
 
   // Resolve aliases for import paths
@@ -26,7 +26,6 @@ export default {
       "@": "/src",
       "@model": "/@model",
       three: "three",
-      postprocessing: "postprocessing",
     },
   },
 

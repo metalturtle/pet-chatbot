@@ -1,4 +1,5 @@
 import { io } from "socket.io-client";
+import { LightningEffect } from "./lightning-effect.js";
 
 export class WorkflowExecutionManager {
   constructor(chatManager, animationManager) {
@@ -9,6 +10,13 @@ export class WorkflowExecutionManager {
     this.steps = [];
     this.currentStepIndex = -1;
     this.isExecuting = false;
+
+    // Initialize lightning effect
+    this.lightningEffect = new LightningEffect();
+
+    // API endpoints
+    this.workflowApiUrl = `http://localhost:3005/natural-request`;
+    this.socketUrl = "http://localhost:3014";
 
     // Create an active workflow card container that will be displayed below the model
     this.createActiveWorkflowElement();
@@ -104,27 +112,145 @@ export class WorkflowExecutionManager {
 
   // Add method to manage visual effects
   startVisualEffects() {
-    // Start hyperdrive effect if available
+    // Start hyperdrive effect if available - make it faster!
     if (this.chatManager.starfieldManager) {
-      this.chatManager.starfieldManager.startHyperdrive();
+      // Call boostSpeed with a much higher speed multiplier (10.0 instead of 4.5)
+      this.chatManager.starfieldManager.boostSpeed(10.0);
+
+      // Log that we're using enhanced hyperdrive
+      console.log("WorkflowExecutionManager: MAXIMUM HYPERDRIVE ENGAGED!");
     }
 
-    // Start electric effects if available
+    // Enable workflow mode with head vibration and disable mouse tracking
     if (this.animationManager) {
-      this.animationManager.startElectricEffect();
+      this.animationManager.startWorkflowMode();
+      console.log(
+        "WorkflowExecutionManager: Head vibration activated for workflow mode"
+      );
     }
+
+    // Start lightning effect around the head
+    if (this.lightningEffect) {
+      this.lightningEffect.start();
+      console.log("WorkflowExecutionManager: Lightning effect activated");
+    }
+
+    // Lightning effects removed as requested
+    // No longer starting electric effects
   }
 
   stopVisualEffects() {
     // Stop hyperdrive effect if available
     if (this.chatManager.starfieldManager) {
-      this.chatManager.starfieldManager.stopHyperdrive();
+      this.chatManager.starfieldManager.normalSpeed();
     }
 
-    // Stop electric effects if available
+    // Disable workflow mode, return to normal head movement
     if (this.animationManager) {
-      this.animationManager.stopElectricEffect();
+      this.animationManager.stopWorkflowMode();
+      console.log(
+        "WorkflowExecutionManager: Head vibration deactivated, normal mode resumed"
+      );
     }
+
+    // Stop lightning effect
+    if (this.lightningEffect) {
+      this.lightningEffect.stop();
+      console.log("WorkflowExecutionManager: Lightning effect deactivated");
+    }
+
+    // Lightning effects removed as requested
+    // No longer stopping electric effects
+  }
+
+  // Add workflow fetching methods from WorkflowAPI
+  async fetchWorkflowData(userPrompt = "") {
+    console.log(
+      "WorkflowExecutionManager: fetchWorkflowData called with prompt:",
+      userPrompt
+    );
+
+    try {
+      // Get the prompt - use provided prompt or default text
+      const prompt = userPrompt || "Show available workflows";
+      console.log("WorkflowExecutionManager: Using prompt:", prompt);
+
+      // Make a POST request to the API with the user prompt in the payload
+      console.log(
+        "WorkflowExecutionManager: Sending request to:",
+        this.workflowApiUrl
+      );
+      const response = await fetch(this.workflowApiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+        }),
+      });
+
+      // Check if the request was successful
+      if (!response.ok) {
+        throw new Error(`API responded with status ${response.status}`);
+      }
+
+      // Parse the JSON response
+      const data = await response.json();
+
+      // Validate that the response has the expected structure
+      if (!data.subnetList || !Array.isArray(data.subnetList)) {
+        throw new Error("Invalid response format: missing subnetList array");
+      }
+
+      console.log("Workflow data fetched successfully:", data);
+      return data;
+    } catch (error) {
+      console.error(
+        "WorkflowExecutionManager: Error fetching workflow data:",
+        error
+      );
+      return this.getFallbackData();
+    }
+  }
+
+  getFallbackData() {
+    console.log("Using sample data as fallback");
+    return {
+      subnetList: [
+        {
+          subnetID: "10",
+          subnetName: "codegen",
+          prompt: "Please generate a Google clone HTML app",
+          promptExample: "Please generate a hello world html app",
+          fileUpload: false,
+          subnetURL: "https://codegenservice-c0n1.stackos.io/natural-request",
+          fileDownload: true,
+        },
+        {
+          subnetID: "9",
+          subnetName: "docker",
+          prompt:
+            "Please build the html docker image for this project with port 80",
+          promptExample:
+            "Please build the html docker image for this project with port 80",
+          fileUpload: true,
+          subnetURL: "https://dockerservice-c0n1.stackos.io/natural-request",
+          fileDownload: false,
+        },
+        {
+          subnetID: "2",
+          subnetName: "stackai",
+          prompt:
+            "Please deploy the generated Docker image with the tag as latest and port 80 with CPU as 256m (millicore) and 2000 mb ram and add a balance of 1 day",
+          promptExample:
+            "Please deploy alethio/ethereum-lite-explorer with the tag as latest and port 80 with CPU as 256m (millicore) and 2000 mb ram and add a balance of 1 day",
+          fileUpload: false,
+          subnetURL: "https://stackaiservice-c0n1.stackos.io/natural-request",
+          fileDownload: false,
+        },
+      ],
+    };
   }
 
   async executeWorkflow(workflow, prompt) {
@@ -159,32 +285,46 @@ export class WorkflowExecutionManager {
     // Start visual effects when workflow begins
     this.startVisualEffects();
 
-    // Prepare workflow steps - in this case, we're implementing a single step workflow
-    this.steps = [workflow];
-    this.currentStepIndex = 0;
-
+    // Get the workflow data to determine all steps in this workflow
     try {
+      // If workflow is already an array, use it directly
+      if (Array.isArray(workflow)) {
+        this.steps = workflow;
+      }
+      // If it's a single workflow object but has a services array, use that
+      else if (workflow.services && Array.isArray(workflow.services)) {
+        this.steps = workflow.services;
+      }
+      // Otherwise treat the workflow itself as a single step
+      else {
+        this.steps = [workflow];
+      }
+
+      this.currentStepIndex = 0;
+
+      console.log(
+        `Executing workflow with ${this.steps.length} steps`,
+        this.steps
+      );
+
       // Show that we're starting workflow execution
       if (this.chatManager && this.chatManager.messageHandler) {
         this.chatManager.messageHandler.addMessage(
-          `Starting workflow: ${workflow.subnetName}`,
+          `Starting workflow with ${this.steps.length} services`,
           false
         );
       }
 
       if (this.chatManager) {
-        this.chatManager.updateSpeechBubble(
-          `Working on ${workflow.subnetName}...`
-        );
+        this.chatManager.updateSpeechBubble(`Working on your request...`);
       }
 
-      if (this.animationManager) {
-        this.animationManager.startTalking();
-      }
+      // Removed talking animation as requested
+      // No longer starting talking animation
 
       // Connect to socket.io server
       try {
-        this.socket = io("https://skynetuseragent-c0n1.stackos.io", {
+        this.socket = io(this.socketUrl, {
           transports: ["websocket"],
           timeout: 600000,
         });
@@ -193,14 +333,22 @@ export class WorkflowExecutionManager {
         throw new Error("Could not connect to workflow service");
       }
 
-      // Prepare payload
+      // Build the payload according to the Node.js implementation format
       const payload = {
-        prompt: prompt,
-        subnet: workflow.subnetID,
+        prompt: prompt || "",
+        userAuthPayload: "",
+        accountNFT: {
+          nftID: "1",
+          collectionID: "0",
+        },
+        // Format workflow services as required by the backend
+        workflow: this.steps, // Send the array of services directly
       };
 
-      // Show active workflow card
-      this.updateActiveWorkflowCard(workflow, "processing");
+      console.log("Sending workflow payload:", payload);
+
+      // Show active workflow card for the first step
+      this.updateActiveWorkflowCard(this.steps[0], "processing");
 
       // Set up socket event handlers and execute the workflow
       await this.setupSocketAndExecute(payload);
@@ -232,10 +380,8 @@ export class WorkflowExecutionManager {
         this.hideActiveWorkflowCard();
       }, 3000);
 
-      // Stop talking animation
-      if (this.animationManager) {
-        this.animationManager.stopTalking();
-      }
+      // Removed talking animation as requested
+      // No longer stopping talking animation
     }
   }
 
@@ -285,12 +431,47 @@ export class WorkflowExecutionManager {
   }
 
   handleProcessingStatus(data) {
-    // Find the current step
+    // Expanded processing status handler for workflow with multiple services
+    console.log("Processing status update:", data);
+
+    // Handle if data contains service information directly
+    if (data.service) {
+      const currentService = data.service;
+      // Find matching step in our steps array
+      const currentStep = this.steps.find(
+        (step) =>
+          step.subnetID === currentService.subnetID ||
+          step.subnetName?.toLowerCase() ===
+            currentService.subnetName?.toLowerCase()
+      );
+
+      if (currentStep) {
+        // Update the current step index
+        this.currentStepIndex = this.steps.indexOf(currentStep);
+
+        // Update UI to show processing
+        this.updateActiveWorkflowCard(currentStep, "processing");
+
+        // Show a message about what's happening
+        const workingMessage = `Processing service ${
+          this.currentStepIndex + 1
+        }/${this.steps.length}: ${currentStep.subnetName}`;
+
+        if (this.chatManager && this.chatManager.messageHandler) {
+          this.chatManager.messageHandler.addMessage(workingMessage, false);
+        }
+
+        // Removed speech bubble update as requested
+      }
+      return;
+    }
+
+    // Legacy handling - find service by subnet ID or name in data
     let subnet = data.subnet;
     if (typeof data.subnet === "string") {
       // Find the step with matching subnet name (case insensitive)
       const matchingStep = this.steps.find(
-        (step) => step.subnetName.toLowerCase() === data.subnet.toLowerCase()
+        (step) => step.subnetName?.toLowerCase() === data.subnet?.toLowerCase()
       );
       if (matchingStep) {
         subnet = matchingStep.subnetID;
@@ -304,29 +485,60 @@ export class WorkflowExecutionManager {
         this.updateActiveWorkflowCard(currentStep, "processing");
 
         // Show a message about what's happening
-        const workingMessage = `Processing with ${
-          currentStep.subnetName
-        }: ${currentStep.promptExample.substring(0, 100)}...`;
+        const workingMessage = `Processing with ${currentStep.subnetName}: ${
+          currentStep.promptExample?.substring(0, 100) || ""
+        }...`;
 
         if (this.chatManager && this.chatManager.messageHandler) {
           this.chatManager.messageHandler.addMessage(workingMessage, false);
         }
 
-        if (this.chatManager) {
-          this.chatManager.updateSpeechBubble(
-            `Running ${currentStep.subnetName}...`
-          );
-        }
+        // Removed speech bubble update as requested
       }
     }
   }
 
   handleDoneStatus(data) {
+    console.log("Done status update:", data);
+
+    // Handle if data contains service information directly
+    if (data.service) {
+      const completedService = data.service;
+      // Find matching step in our steps array
+      const completedStep = this.steps.find(
+        (step) =>
+          step.subnetID === completedService.subnetID ||
+          step.subnetName?.toLowerCase() ===
+            completedService.subnetName?.toLowerCase()
+      );
+
+      if (completedStep) {
+        // Update UI to show completion
+        this.updateActiveWorkflowCard(completedStep, "done");
+
+        // Handle response data for this step
+        if (data.response) {
+          this.handleResponseData(data.response, completedStep);
+        }
+
+        // Move to the next step if available
+        const nextIndex = this.steps.indexOf(completedStep) + 1;
+        if (nextIndex < this.steps.length) {
+          const nextStep = this.steps[nextIndex];
+          this.currentStepIndex = nextIndex;
+          // Prepare for next step
+          this.updateActiveWorkflowCard(nextStep, "waiting");
+        }
+      }
+      return;
+    }
+
+    // Legacy handling
     let subnet = data.subnet;
 
     if (typeof data.subnet === "string") {
       const matchingStep = this.steps.find(
-        (step) => step.subnetName.toLowerCase() === data.subnet.toLowerCase()
+        (step) => step.subnetName?.toLowerCase() === data.subnet?.toLowerCase()
       );
       if (matchingStep) {
         subnet = matchingStep.subnetID;
@@ -348,13 +560,23 @@ export class WorkflowExecutionManager {
   }
 
   handleCompletedStatus(data) {
+    // Log the completion data
+    console.log("Workflow completion:", data);
+
     // Mark all steps as done
     const lastStep = this.steps[this.steps.length - 1];
     this.updateActiveWorkflowCard(lastStep, "done");
 
-    // Handle final result
+    // Check for result from the Node.js implementation
     if (data.result) {
+      // Process the combined result
       this.handleFinalResult(data.result, data.contentType);
+    } else if (data.reult) {
+      // Handle misspelled property name from the backend
+      this.handleFinalResult(data.reult, data.contentType);
+    } else if (data.response) {
+      // Alternative property name
+      this.handleFinalResult(data.response, data.contentType);
     }
 
     // Show completion message
@@ -365,8 +587,34 @@ export class WorkflowExecutionManager {
       );
     }
 
-    if (this.chatManager) {
-      this.chatManager.updateSpeechBubble("Workflow complete!");
+    // Removed speech bubble update as requested
+  }
+
+  handleServiceResult(result, serviceName) {
+    if (!result) return;
+
+    let displayResult;
+
+    if (typeof result === "string") {
+      try {
+        const parsedResult = JSON.parse(result);
+        displayResult = JSON.stringify(parsedResult, null, 2);
+      } catch {
+        displayResult = result;
+      }
+    } else {
+      // If result is already an object
+      displayResult = JSON.stringify(result, null, 2);
+    }
+
+    // Add the service result to chat history
+    if (this.chatManager && this.chatManager.messageHandler) {
+      this.chatManager.messageHandler.addMessage(
+        `${serviceName} result: ${displayResult.substring(0, 800)}${
+          displayResult.length > 800 ? "..." : ""
+        }`,
+        false
+      );
     }
   }
 
@@ -398,22 +646,8 @@ export class WorkflowExecutionManager {
   }
 
   handleFinalResult(result, contentType) {
-    // For file downloads
-    if (
-      contentType &&
-      !contentType.includes("text") &&
-      !contentType.includes("json")
-    ) {
-      if (this.chatManager && this.chatManager.messageHandler) {
-        this.chatManager.messageHandler.addMessage(
-          `Received file output of type: ${contentType}. File downloads are not implemented in this demo.`,
-          false
-        );
-      }
-      return;
-    }
+    if (!result) return;
 
-    // For text or JSON responses
     let displayResult;
 
     if (typeof result === "string") {
@@ -431,11 +665,21 @@ export class WorkflowExecutionManager {
     // Add the final result to chat history
     if (this.chatManager && this.chatManager.messageHandler) {
       this.chatManager.messageHandler.addMessage(
-        `Final result: ${displayResult.substring(0, 1000)}${
-          displayResult.length > 1000 ? "..." : ""
+        `Workflow result: ${displayResult.substring(0, 800)}${
+          displayResult.length > 800 ? "..." : ""
         }`,
-        false
+        true // Mark this as a bot message
       );
+    }
+
+    // If there's a content type indicating a file, handle it accordingly
+    if (contentType && contentType !== "application/json") {
+      if (this.chatManager && this.chatManager.messageHandler) {
+        this.chatManager.messageHandler.addMessage(
+          `Received file of type: ${contentType}. File processing is available.`,
+          false
+        );
+      }
     }
   }
 }

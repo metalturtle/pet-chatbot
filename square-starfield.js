@@ -11,11 +11,11 @@ class SquareStarfield {
     this.minSpeed = 0.2;
     this.maxSpeed = 1.2;
     this.speedMultiplier = 1.0; // Normal speed multiplier
-    this.boostMultiplier = 3.0; // Boosted speed multiplier
-    this.maxStretchFactor = 15.0; // Maximum stretch for hyperdrive effect
-    this.transitionSpeed = 0.12; // How quickly to transition in/out of hyperdrive
+    this.boostMultiplier = 5.0; // Increased boost multiplier (was 3.0)
+    this.maxStretchFactor = 20.0; // Increased maximum stretch (was 15.0)
+    this.transitionSpeed = 0.15; // Faster transition (was 0.12)
     this.currentStretchLevel = 0; // Current transition level (0-1)
-    this.chromaticStrength = 0.05; // Reduced strength for more subtle effect
+    this.chromaticStrength = 0.08; // Increased chromatic aberration (was 0.05)
     // Pure white color for all stars
     this.starColor = 0xffffff; // Pure white
 
@@ -287,13 +287,43 @@ class SquareStarfield {
   }
 
   // Boost the starfield speed when user is waiting for a response
-  boostSpeed() {
+  boostSpeed(speedMultiplier = null) {
+    // If a specific multiplier is provided, use it, otherwise use the default
+    if (speedMultiplier !== null && !isNaN(speedMultiplier)) {
+      // Set the boost multiplier to the provided value
+      this.boostMultiplier = speedMultiplier;
+      console.log(`StarField: Boosting speed to ${speedMultiplier}x`);
+    }
+
+    // Apply the boost multiplier
     this.speedMultiplier = this.boostMultiplier;
+
+    // Also increase transition speed for a more dramatic effect
+    this.transitionSpeed = 0.35; // Much faster transition
+
+    // Increase maximum stretch factor for more dramatic streaks
+    this.maxStretchFactor = 35.0; // Much longer streaks
+
+    // Increase chromatic strength for more visible effect during hyperdrive
+    this.chromaticStrength = 0.15;
+
+    console.log(
+      `StarField: Hyperdrive ENGAGED at ${this.speedMultiplier}x speed!`
+    );
   }
 
   // Return to normal speed when the chatbot responds
   normalSpeed() {
     this.speedMultiplier = 1.0;
+
+    // Reset transition speed to default
+    this.transitionSpeed = 0.15;
+
+    // Reset maximum stretch factor to default
+    this.maxStretchFactor = 20.0;
+
+    // Reset chromatic strength to default
+    this.chromaticStrength = 0.08;
   }
 
   // Set a custom speed multiplier if desired

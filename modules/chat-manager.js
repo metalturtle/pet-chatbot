@@ -4,7 +4,6 @@
  */
 import { MessageHandler } from "./message-handler.js";
 import { WorkflowPanelManager } from "./workflow-panel-manager.js";
-import { WorkflowAPI } from "./workflow-api.js";
 import { ButtonHandler } from "./button-handler.js";
 import { WorkflowButtonHandler } from "./workflow-button-handler.js";
 
@@ -55,7 +54,6 @@ export class ChatManager {
 
     // Initialize workflow-related modules
     this.workflowPanelManager = new WorkflowPanelManager(this);
-    this.workflowAPI = new WorkflowAPI(this);
 
     // Initialize the workflow button handler
     this.workflowButtonHandler = new WorkflowButtonHandler(
@@ -215,9 +213,13 @@ export class ChatManager {
       const userPrompt = this.messageInput.value.trim();
       console.log("ChatManager: userPrompt for workflow search:", userPrompt);
 
-      // Fetch the data using our API module
-      console.log("ChatManager: Calling workflowAPI.fetchWorkflowData");
-      const data = await this.workflowAPI.fetchWorkflowData(userPrompt);
+      // Use the workflow execution manager to fetch data
+      console.log(
+        "ChatManager: Calling workflowExecutionManager.fetchWorkflowData"
+      );
+      const data = await this.workflowExecutionManager.fetchWorkflowData(
+        userPrompt
+      );
       console.log("ChatManager: Workflow data received:", data);
 
       // Process the workflow data
@@ -244,121 +246,22 @@ export class ChatManager {
     } finally {
       // Stop the talking animation after a short delay
       setTimeout(() => {
-        this.animationManager.stopTalking();
+        if (this.animationManager) {
+          this.animationManager.stopTalking();
+        }
       }, 1000);
     }
   }
 
   // Add a new method to send a message to the selected workflow's API
   async sendToWorkflow(message, workflow) {
-    this.isResponding = true;
-
-    // Start the talking animation if available
-    if (this.animationManager) {
-      this.animationManager.startTalking();
-    }
-    this.updateSpeechBubble(`Processing with ${workflow.subnetName}...`);
-
-    // Show typing indicator
-    if (this.messageHandler) {
-      this.messageHandler.showTypingIndicator();
+    if (!this.workflowExecutionManager) {
+      console.error("WorkflowExecutionManager not initialized");
+      return;
     }
 
-    try {
-      // If we have a workflow execution manager, use it for execution
-      if (this.workflowExecutionManager) {
-        // Delegate to the workflow execution manager
-        await this.workflowExecutionManager.executeWorkflow(workflow, message);
-      } else {
-        // Otherwise, use the fallback implementation
-        await this.fallbackWorkflowExecution(message, workflow);
-      }
-    } catch (error) {
-      // Show error message
-      if (this.messageHandler) {
-        this.messageHandler.addMessage(
-          `Error with ${workflow.subnetName} service: ${error.message}`,
-          false
-        );
-      }
-      this.updateSpeechBubble("I encountered an error!");
-    } finally {
-      // Remove typing indicator
-      if (this.messageHandler) {
-        this.messageHandler.removeTypingIndicator();
-      }
-
-      // End the response sequence
-      setTimeout(() => {
-        this.endBotResponse();
-      }, 1000);
-    }
-  }
-
-  // Fallback implementation if workflow execution manager is not available
-  async fallbackWorkflowExecution(message, workflow) {
-    // If workflow requires file upload, we would handle that here
-    if (workflow.fileUpload) {
-      // In a real implementation, we would add file data
-      this.messageHandler.addMessage(
-        "Note: This workflow requires file upload. File upload is not implemented in this demo.",
-        false
-      );
-    }
-
-    // Make the POST request to the workflow API
-    this.messageHandler.addMessage(
-      `Sending request to ${workflow.subnetName} service...`,
-      false
-    );
-
-    // Execute the workflow using our API module
-    const result = await this.workflowAPI.executeWorkflow(message, workflow);
-
-    if (result.success) {
-      // Process the successful response
-      this.updateSpeechBubble(`${workflow.subnetName} responded!`);
-      this.messageHandler.addMessage(
-        `Response from ${workflow.subnetName} service:`,
-        false
-      );
-
-      // Format and display the response data
-      if (typeof result.data === "object") {
-        this.messageHandler.addMessage(
-          JSON.stringify(result.data, null, 2),
-          false
-        );
-      } else {
-        this.messageHandler.addMessage(String(result.data), false);
-      }
-    } else {
-      // Handle the error case with simulated response
-      this.messageHandler.addMessage(
-        `Could not connect to ${workflow.subnetName} service. Using simulated response.`,
-        false
-      );
-
-      // Simulate a brief delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Update bubble text
-      this.updateSpeechBubble(`${workflow.subnetName} is responding!`);
-
-      // Show the simulated response
-      this.messageHandler.addMessage(
-        `Simulated response from ${workflow.subnetName}: ${result.simulatedResponse.result}`,
-        false
-      );
-    }
-
-    // If workflow provides file download, add a download option
-    if (workflow.fileDownload) {
-      this.messageHandler.addMessage(
-        "Note: This workflow provides file download. Download functionality is not implemented in this demo.",
-        false
-      );
-    }
+    // Delegate to the workflow execution manager
+    await this.workflowExecutionManager.executeWorkflow(workflow, message);
   }
 
   // Set the workflow execution manager reference

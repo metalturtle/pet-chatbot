@@ -12,9 +12,9 @@ export class StarfieldManager {
     }
   }
 
-  boostSpeed() {
+  boostSpeed(speedMultiplier) {
     if (this.starfield) {
-      this.starfield.boostSpeed();
+      this.starfield.boostSpeed(speedMultiplier);
     }
   }
 
